@@ -1,14 +1,14 @@
-
 import fs from "fs";
 import puppeteer from "puppeteer-core";
 
 const URL = "https://campaign.diamante.io/transactions";
-const DELAY = 60_000;
+const DELAY = 60 * 1000;
+const AMOUNT = "1";
 
 const wallets = fs.readFileSync("wallet.txt", "utf8")
   .split("\n")
   .map(w => w.trim())
-  .filter(w => w.length > 20);
+  .filter(w => w.startsWith("0x"));
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -19,14 +19,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     headless: false,
     userDataDir: "./profile",
+    args: ["--no-sandbox"]
   });
 
   const page = await browser.newPage();
-  page.setDefaultTimeout(60000);
+  page.setDefaultTimeout(30000);
 
   for (let i = 0; i < wallets.length; i++) {
     const wallet = wallets[i];
-    console.log(`[${i + 1}/${wallets.length}] Send → ${wallet}`);
+    console.log(`[${i + 1}/${wallets.length}] Send to ${wallet}`);
 
     try {
       await page.goto(URL, { waitUntil: "networkidle2" });
@@ -35,21 +36,24 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await page.waitForSelector("button");
       await page.click("button");
 
-      // TO ADDRESS
-      await page.waitForSelector("input[placeholder*='Address']");
-      await page.click("input[placeholder*='Address']", { clickCount: 3 });
-      await page.keyboard.type(wallet, { delay: 20 });
+      // WAIT INPUTS
+      await page.waitForSelector("input");
+      const inputs = await page.$$("input");
 
-      // AMOUNT
-      await page.waitForSelector("input[placeholder*='Amount']");
-      await page.click("input[placeholder*='Amount']", { clickCount: 3 });
-      await page.keyboard.type("1");
+      // inputs[0] = FROM (SKIP)
+      // inputs[1] = TO
+      // inputs[2] = AMOUNT
 
-      // SUBMIT
-      await page.waitForSelector("button[type='submit']");
+      await inputs[1].click({ clickCount: 3 });
+      await inputs[1].type(wallet);
+
+      await inputs[2].click({ clickCount: 3 });
+      await inputs[2].type(AMOUNT);
+
+      // SEND
       await page.click("button[type='submit']");
 
-      console.log("✅ TX SENT");
+      console.log("✅ TRANSACTION SENT");
 
     } catch (e) {
       console.log("❌ FAILED:", e.message);
@@ -61,4 +65,5 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     }
   }
 
-  console.log("🎉
+  console.log("🎉 DONE");
+})();
