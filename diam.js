@@ -1,9 +1,8 @@
-
 import fs from "fs";
 import puppeteer from "puppeteer-core";
 
 const URL = "https://campaign.diamante.io/transactions";
-const DELAY = 60 * 1000; // 1 menit
+const DELAY = 60 * 1000;
 
 const wallets = fs.readFileSync("wallet.txt", "utf8")
   .split("\n")
@@ -21,8 +20,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     userDataDir: "./profile",
     args: [
       "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-blink-features=AutomationControlled"
+      "--disable-setuid-sandbox"
     ]
   });
 
@@ -36,14 +34,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     try {
       await page.goto(URL, { waitUntil: "networkidle2" });
 
-      // buka modal
-      await page.waitForXPath("//button/span");
-      const [openBtn] = await page.$x("//button/span");
-      await openBtn.click();
+      // OPEN SEND MODAL
+      await page.waitForSelector("button span");
+      await page.click("button span");
 
-      // input
-      await page.waitForXPath("//input");
-      const inputs = await page.$x("//input");
+      // INPUTS
+      await page.waitForSelector("input");
+      const inputs = await page.$$("input");
 
       await inputs[0].click({ clickCount: 3 });
       await inputs[0].type(wallet);
@@ -51,16 +48,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await inputs[1].click({ clickCount: 3 });
       await inputs[1].type("1");
 
-      // submit
-      const [submit] = await page.$x("//button[@type='submit']");
-      await submit.click();
+      // SUBMIT
+      await page.waitForSelector("button[type='submit']");
+      await page.click("button[type='submit']");
 
-      // confirm (jika muncul)
+      // CONFIRM (optional)
       await page.waitForTimeout(2000);
-      const confirm = await page.$x("//button/img");
-      if (confirm.length) await confirm[0].click();
+      const confirm = await page.$("button img");
+      if (confirm) await confirm.click();
 
       console.log("✅ SUCCESS");
+
     } catch (e) {
       console.log("❌ FAILED:", e.message);
     }
