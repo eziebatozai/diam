@@ -1,23 +1,24 @@
+
 import fs from "fs";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
 
 const URL = "https://campaign.diamante.io/transactions";
 const DELAY = 60 * 1000; // 1 menit
-
-const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
 const wallets = fs.readFileSync("wallet.txt", "utf8")
   .split("\n")
   .map(w => w.trim())
   .filter(Boolean);
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 (async () => {
-  console.log("🚀 DIAM TESTNET BOT STARTED");
-  console.log(`📂 Wallet loaded: ${wallets.length}`);
+  console.log("🚀 DIAM BOT START");
 
   const browser = await puppeteer.launch({
-    headless: false, // WAJIB false untuk wallet
-    userDataDir: "./profile", // SIMPAN LOGIN WALLET
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    headless: false,
+    userDataDir: "./profile",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -28,58 +29,47 @@ const wallets = fs.readFileSync("wallet.txt", "utf8")
   const page = await browser.newPage();
   page.setDefaultTimeout(30000);
 
-  console.log("\n🔑 Pastikan WALLET SUDAH CONNECT ke Diamante");
-  console.log("⏸ Jika belum, login manual sekarang lalu tekan ENTER");
-
-  await new Promise(resolve => process.stdin.once("data", resolve));
-
   for (let i = 0; i < wallets.length; i++) {
     const wallet = wallets[i];
-    console.log(`\n[${i + 1}/${wallets.length}] Sending to: ${wallet}`);
+    console.log(`[${i + 1}/${wallets.length}] Send to ${wallet}`);
 
     try {
       await page.goto(URL, { waitUntil: "networkidle2" });
 
-      // OPEN SEND MODAL
+      // buka modal
       await page.waitForXPath("//button/span");
       const [openBtn] = await page.$x("//button/span");
       await openBtn.click();
 
-      // INPUT FIELDS
+      // input
       await page.waitForXPath("//input");
       const inputs = await page.$x("//input");
 
-      // WALLET ADDRESS
       await inputs[0].click({ clickCount: 3 });
       await inputs[0].type(wallet);
 
-      // AMOUNT
       await inputs[1].click({ clickCount: 3 });
       await inputs[1].type("1");
 
-      // SUBMIT
-      const [submitBtn] = await page.$x("//button[@type='submit']");
-      await submitBtn.click();
+      // submit
+      const [submit] = await page.$x("//button[@type='submit']");
+      await submit.click();
 
-      // CONFIRM (JIKA ADA)
+      // confirm (jika muncul)
       await page.waitForTimeout(2000);
       const confirm = await page.$x("//button/img");
-      if (confirm.length > 0) {
-        await confirm[0].click();
-      }
+      if (confirm.length) await confirm[0].click();
 
       console.log("✅ SUCCESS");
-
-    } catch (err) {
-      console.log("❌ FAILED:", err.message);
+    } catch (e) {
+      console.log("❌ FAILED:", e.message);
     }
 
     if (i < wallets.length - 1) {
-      console.log("⏳ Delay 1 minute...");
+      console.log("⏳ delay 1 menit");
       await sleep(DELAY);
     }
   }
 
-  console.log("\n🎉 ALL WALLET DONE");
-  await browser.close();
+  console.log("🎉 DONE");
 })();
